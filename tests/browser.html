@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Course browser audit</title></head><body><pre id="result">RUNNING</pre><iframe id="course" style="width:100%;height:900px;border:0"></iframe><script>
+const iframe=document.getElementById('course'),result=document.getElementById('result');
+const params=new URLSearchParams(location.search),width=+(params.get('width')||1280);
+iframe.style.width=width+'px';iframe.src='../docs/';
+iframe.addEventListener('load',async()=>{
+ try{
+  const w=iframe.contentWindow,d=w.document;
+  if(!d.body.dataset.ready)await new Promise((resolve,reject)=>{w.addEventListener('course-ready',resolve,{once:true});setTimeout(()=>reject(Error(d.body.dataset.error||'course load timeout')),20000);});
+  const assertions=[],assert=(condition,label)=>{if(!condition)throw Error(label);assertions.push(label);};
+  const change=(id,value)=>{const el=d.getElementById(id);el.value=value;el.dispatchEvent(new w.Event('input',{bubbles:true}));el.dispatchEvent(new w.Event('change',{bubbles:true}));};
+  const text=id=>d.getElementById(id).textContent;
+  assert(!d.body.dataset.error,'all assets load and parity audit passes');
+  assert(d.documentElement.scrollWidth<=d.documentElement.clientWidth+1,'no page horizontal overflow');
+  assert(text('generation').includes('paris')&&text('generation').includes('tokyo'),'default two-layer decoder produces answer');
+  change('preset','swap');assert(text('generation').indexOf('tokyo')<text('generation').indexOf('paris'),'context changes output order');
+  change('preset','reverse');assert(text('generation').indexOf('tokyo')<text('generation').indexOf('paris'),'question order changes output order');
+  change('preset','standard');
+  change('token-step','0');assert(text('token-position').includes('position 0'),'token step changes trace');
+  change('decoder-layer','0');change('decoder-head','3');assert(text('attention-table').includes('<bos>'),'layer/head controls render numeric attention');
+  change('overflow-step','9');assert(text('overflow-result').includes('stops'),'strict overflow blocks');
+  change('overflow-policy','sliding');assert(text('overflow-result').includes('evicts'),'sliding overflow evicts');
+  for(const arch of ['mha','gqa','mqa','mla']){change('arch',arch);assert(text('arch-shapes').length>20,arch+' trace renders');}
+  change('latent-q','-1');assert(text('latent-q-label').includes('-1.000'),'latent algebra recalculates');
+  change('draft-mode','wrong');assert(text('spec-result').includes('Accepted 1'),'speculative rejection rolls back');
+  change('draft-mode','correct');assert(text('spec-result').includes('Accepted 2'),'speculative acceptance commits');
+  change('draft-mix','1');assert(text('sampling-result').includes('40.0%'),'exact speculative acceptance recomputes');
+  change('transfer-mode','independent');assert(text('transfer-result').includes('independently'),'independent transfer has explicit limitation');
+  change('ridge','100');assert(text('transfer-metrics').length>20,'ridge experiment switches');
+  change('prefix-mode','fact');assert(text('prefix-result').includes('5 tokens'),'shared causal prefix boundary changes');
+  for(const policy of ['recent','sink','heavy']){change('evict-policy',policy);assert(text('evict-result').includes('TV'),'eviction '+policy+' computes continuation');}
+  change('evict-budget','22');assert(text('evict-result').includes('0.0000'),'full cache eviction budget preserves prediction');
+  for(const part of ['k','v','both']){change('quant-part',part);assert(text('quant-metrics').includes('score error'),'quantization '+part+' recomputes');}
+  change('quant-bits','2');change('page-tokens','24');change('page-block','8');assert(text('page-result').includes('0 tail'),'paging allocation recomputes');
+  change('flash-block','2');assert(text('flash-result').includes('tiles processed'),'online softmax tiles recompute');
+  change('rotation-bits','4');assert(text('rotation-result').includes('4 bits'),'rotation quantization recomputes');
+  assert(d.documentElement.scrollWidth<=d.documentElement.clientWidth+1,'no overflow after interactions');
+  result.textContent='PASS '+assertions.length+'\n'+assertions.join('\n');document.body.dataset.result='pass';
+ }catch(e){result.textContent='FAIL: '+e.stack;document.body.dataset.result='fail';}
+});
+</script></body></html>
