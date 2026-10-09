@@ -97,17 +97,24 @@ function renderPrefix(){const a=tokenize('<bos> context : france = paris ; japan
   set('prefix-tokens',`<h5>Request A</h5><div class="tokens">${a.map((w,i)=>`<span class="token ${i<reuse?'context':'future'}">${esc(w)}<small>${i}</small></span>`).join('')}</div><h5>Request B · green = reusable full-block rows</h5><div class="tokens">${b.map((w,i)=>`<span class="token ${i<reuse?'current':''}">${esc(w)}<small>${i}</small></span>`).join('')}</div>`);
   $('prefix-result').textContent=`Exact shared prefix: ${p} tokens. With ${B}-token full blocks, reuse ${reuse} rows and process ${b.length-reuse} suffix rows. The first changed position is ${p}; matching text after it cannot restore cached equality.`;
 }
-function eviction(){const n=prompt.ids.length,budget=Math.min(+$('evict-budget').value,n),p=n-1,previous=run(model,prompt.ids.slice(0,-1)),all=previous.caches[0].map(r=>r.position),policy=$('evict-policy').value;
+function evictionCase(policy,budget){const n=prompt.ids.length,p=n-1,previous=run(model,prompt.ids.slice(0,-1)),all=previous.caches[0].map(r=>r.position);
   let keep;
   if(policy==='recent')keep=all.slice(-(budget-1));
   else if(policy==='sink')keep=[0,...all.slice(-(budget-2))];
   else{const importance=all.map(()=>0);for(const st of previous.steps)for(const tr of st.traces)for(const a of tr.attention)for(let j=0;j<a.length;j++)importance[j]+=a[j];
     const recent=all.slice(-2),rank=all.filter(i=>!recent.includes(i)).sort((a,b)=>importance[b]-importance[a]);keep=[...recent,...rank.slice(0,budget-3)].sort((a,b)=>a-b);}
   const result=step(model,prompt.ids[p],previous.caches,p,{keep:{at:p,positions:keep}}),positions=[...keep,p].sort((a,b)=>a-b);
+  return {result,positions};
+}
+function eviction(){const n=prompt.ids.length,budget=Math.min(+$('evict-budget').value,n),p=n-1,policy=$('evict-policy').value;
+  const labels={recent:'Recent window',sink:'Sink + recent',heavy:'Heavy hitters + recent'},cases=Object.keys(labels).map(key=>({key,...evictionCase(key,budget)}));
+  const {result,positions}=cases.find(c=>c.key===policy),original=argmax(prompt.last.p),bytesPerRow=2*model.config.layers*model.config.heads*model.config.head_dim*2;
   $('evict-label').textContent=`${budget} total rows / ${n} original`;
   slots('evict-slots',Array.from({length:n},(_,i)=>i),positions,p);
   topMulti('evict-bars',[{name:'full cache',values:prompt.last.p},{name:'evicted',values:result.p}]);
   $('evict-result').textContent=`Retained positions [${positions.join(', ')}]. Next-token TV changes by ${f(tv(prompt.last.p,result.p),4)}; full-cache choice “${model.vocab[argmax(prompt.last.p)]}”, evicted-cache choice “${model.vocab[argmax(result.p)]}”. Other surviving rows still encode their original causal histories.`;
+  set('evict-metrics',metric(`${n*bytesPerRow} B`,'full cache · hypothetical FP16')+metric(`${positions.length*bytesPerRow} B`,'retained cache · hypothetical FP16')+metric(pct(1-positions.length/n),'stored-row reduction'));
+  set('evict-comparison','<thead><tr><th>Policy</th><th>Rows</th><th>Next token</th><th>TV from full cache</th><th>P(original choice)</th></tr></thead><tbody>'+[{label:'Full cache',rows:n,p:prompt.last.p},...cases.map(c=>({label:labels[c.key]+(c.key===policy?' · selected':''),rows:c.positions.length,p:c.result.p}))].map(c=>`<tr><td>${esc(c.label)}</td><td>${c.rows}</td><td>${esc(model.vocab[argmax(c.p)])}</td><td>${f(tv(prompt.last.p,c.p),4)}</td><td>${f(c.p[original],6)}</td></tr>`).join('')+'</tbody>');
 }
 function quantLab(){const tr=prompt.last.traces[1],q=tr.q[0],rows=tr.cache,b=+$('quant-bits').value,part=$('quant-part').value,k=rows.map(r=>r.k[0]),v=rows.map(r=>r.v[0]);
   const khat=part==='v'?k:k.map(x=>quantize(x,b).values),vhat=part==='k'?v:v.map(x=>quantize(x,b).values),scores=khat.map(x=>dot(q,x)/Math.sqrt(8)),a=softmax(scores),full=tr.attention[0];

@@ -27,6 +27,8 @@ iframe.addEventListener('load',async()=>{
   change('transfer-mode','independent');assert(text('transfer-result').includes('independently'),'independent transfer has explicit limitation');
   change('ridge','100');assert(text('transfer-metrics').length>20,'ridge experiment switches');
   change('prefix-mode','fact');assert(text('prefix-result').includes('5 tokens'),'shared causal prefix boundary changes');
+  change('evict-budget','8');assert(d.querySelectorAll('#evict-comparison tbody tr').length===4&&text('evict-comparison').includes('tokyo')&&text('evict-comparison').includes('cairo'),'side-by-side eviction comparison reproduces the default loss of evidence');
+  assert(text('evict-metrics').includes('5632 B')&&text('evict-metrics').includes('2048 B'),'eviction counter accounts for K and V in both layers');
   for(const policy of ['recent','sink','heavy']){change('evict-policy',policy);assert(text('evict-result').includes('TV'),'eviction '+policy+' computes continuation');}
   change('evict-budget','22');assert(text('evict-result').includes('0.0000'),'full cache eviction budget preserves prediction');
   for(const part of ['k','v','both']){change('quant-part',part);assert(text('quant-metrics').includes('score error'),'quantization '+part+' recomputes');}
