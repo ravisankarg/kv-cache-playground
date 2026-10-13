@@ -1,3 +1,4 @@
+import {initParallelLabs} from './parallel.js';
 import {dot,softmax,mv,add,tv,argmax,run,generate,prefill,step,cloneCache,speculativeMass,quantize,onlineAttention,tokenize} from './engine.js';
 const $=id=>document.getElementById(id), esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f=(v,n=3)=>Number(v).toFixed(n), pct=v=>`${f(v*100,1)}%`, sci=v=>Number(v).toExponential(2);
@@ -161,8 +162,9 @@ async function init(){try{
   for(const id of ['quant-bits','quant-part'])bind(id,quantLab);
   for(const id of ['page-tokens','page-block'])bind(id,renderPaging);
   bind('flash-block',renderFlash);bind('rotation-bits',renderRotation);
-  buildPrompt();renderOverflow();renderArchitectures();renderLatent();renderSampling();renderTransfer();renderPrefix();renderPaging();renderRotation();audits();
+  buildPrompt();renderOverflow();renderArchitectures();renderLatent();renderSampling();renderTransfer();renderPrefix();renderPaging();renderRotation();audits();initParallelLabs();
   const observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){document.querySelectorAll('.contents a').forEach(a=>a.classList.toggle('active',a.hash===`#${e.target.id}`));}},{rootMargin:'-10% 0px -70% 0px'});document.querySelectorAll('.chapter').forEach(el=>observer.observe(el));
+  if(location.hash)document.getElementById(location.hash.slice(1))?.scrollIntoView({behavior:'instant',block:'start'});
   document.body.dataset.ready='true';window.dispatchEvent(new Event('course-ready'));
 }catch(error){$('load-error').hidden=false;$('load-error').textContent=`The labs could not load: ${error.message}. Serve the site over HTTP so the checked-in JSON files can be fetched.`;document.body.dataset.error=error.message;console.error(error);}}
 init();

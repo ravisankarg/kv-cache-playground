@@ -35,6 +35,27 @@ iframe.addEventListener('load',async()=>{
   change('quant-bits','2');change('page-tokens','24');change('page-block','8');assert(text('page-result').includes('0 tail'),'paging allocation recomputes');
   change('flash-block','2');assert(text('flash-result').includes('tiles processed'),'online softmax tiles recompute');
   change('rotation-bits','4');assert(text('rotation-result').includes('4 bits'),'rotation quantization recomputes');
+  assert(d.querySelector('a[href="#diffusion"]')&&d.querySelector('a[href="#ncm"]'),'new chapters are discoverable');
+  assert(text('parallel-work').includes('1,365'),'default hierarchy attention-pair count');
+  change('parallel-length','128');change('parallel-rounds','64');change('parallel-growth','4');assert(text('parallel-work').includes('1,048,576'),'work calculator recomputes at largest inputs');
+  change('diff-noise','0');assert(d.querySelectorAll('#diff-corrupted .masked').length===0&&text('diff-loss').includes('not evaluated'),'zero-noise endpoint avoids division by zero');
+  change('diff-noise','1');assert(d.querySelectorAll('#diff-corrupted .masked').length===8,'full-noise endpoint masks every position');
+  change('diff-example','2');assert(!text('diff-loss').includes('NaN'),'training loss updates for another target');
+  change('diff-rounds','1');d.getElementById('diff-next').click();assert(text('diff-result').includes('Unsupported')&&text('diff-tokens').includes('red'),'one-pass parallel marginals show dependency failure');
+  change('diff-rounds','8');change('diff-step','8');assert(text('diff-result').includes('Supported output')&&text('diff-tokens').includes('blue'),'eight rounds resolve dependency');
+  assert(d.getElementById('diff-next').disabled,'completed diffusion disables next');
+  d.getElementById('diff-reset').click();d.getElementById('diff-play').click();assert(text('diff-step-label').includes('Round 1'),'diffusion playback advances');d.getElementById('diff-play').click();assert(text('diff-play')==='Play','diffusion playback pauses');
+  change('ncm-level','0');assert(d.querySelectorAll('#ncm-hierarchy .revealed').length===0,'zero NCM levels hides all codes');
+  change('ncm-level','4');assert(text('ncm-metrics').includes('0.0000'),'full hierarchy reconstructs exactly');
+  change('ncm-edit-level','0');change('ncm-edit-code','3');assert(text('ncm-edit-result').includes('8 / 8'),'coarse code edit changes whole signal');
+  change('ncm-edit-level','3');change('ncm-edit-code','2');assert(text('ncm-edit-result').includes('1 / 8'),'fine code edit changes one position');
+  change('ncm-edit-position','7');change('ncm-edit-code','4');assert(text('ncm-edit-result').includes('1 / 8'),'fine code position selection works');
+  change('ncm-level','1');assert(text('ncm-edit-result').includes('not revealed'),'hidden edit waits for its level');
+  change('ncm-signal','falling');change('ncm-level','4');assert(text('ncm-metrics').includes('0.0000'),'alternate signal reconstructs');
+  d.getElementById('ncm-reset').click();d.getElementById('ncm-play').click();assert(text('ncm-level-label').includes('2 / 4'),'NCM playback advances');d.getElementById('ncm-play').click();
+  change('dependency-mask','causal');assert(text('dependency-result').includes('1 unchanged-token'),'causal edit only invalidates its suffix');
+  change('dependency-mask','bidirectional');assert(text('dependency-result').includes('7 unchanged-token'),'bidirectional edit propagates to other tokens');
+  change('dependency-delta','0');assert(text('dependency-result').includes('0 unchanged-token'),'no input change preserves all state');
   assert(d.documentElement.scrollWidth<=d.documentElement.clientWidth+1,'no overflow after interactions');
   result.textContent='PASS '+assertions.length+'\n'+assertions.join('\n');document.body.dataset.result='pass';
  }catch(e){result.textContent='FAIL: '+e.stack;document.body.dataset.result='fail';}

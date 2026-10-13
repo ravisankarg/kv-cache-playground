@@ -1,6 +1,6 @@
 # KV Cache Playground
 
-An interactive course that follows context and a user question through a trained two-layer toy decoder, then examines KV architecture, speculative decoding, multi-token prediction, cache transfer, eviction, and serving. Each chapter connects first principles and equations to numerical labs.
+An interactive course that follows context and a user question through a trained two-layer toy decoder, then examines KV architecture, speculative decoding, multi-token prediction, cache transfer, eviction, serving, diffusion language models, and Next-Concept Modeling (NCM). Each chapter connects first principles and equations to numerical labs.
 
 **Live guide:** [ravisankarg.github.io/kv-cache-playground](https://ravisankarg.github.io/kv-cache-playground/)
 
@@ -23,7 +23,17 @@ Then visit `http://localhost:8000/docs/`. The page loads checked-in weights from
 | 3. Faster decoding | Candidate verification, cache rollback, exact speculative-sampling correction, auxiliary MTP training | Accept/reject proposals; compare analytic probability mass with 20,000 sampled trials; inspect both trained future heads |
 | 4. Reuse and transfer | Compatible same-model handoff, per-head ridge maps, RoPE factoring, causal prefix boundaries | Compare an invertible cache basis change with an independent random decoder; change ridge strength and prefix block size |
 | 5. Memory and serving | Eviction and renormalization, affine quantization, logical/physical paging, online softmax | Compare retention policies and output TV; quantize real toy K/V; inspect block addresses and tile-by-tile attention accumulation |
-| 6. Further directions | Orthogonal rotation, cross-layer sharing, sparse cache retrieval, chunked prefill | Isolate rotation plus quantization on an outlier vector; link the other directions to primary sources |
+| 6. Parallel generation | Masked diffusion, multiscale residual VQ, levelwise NCM factorization, causal versus bidirectional state dependencies | Compare work schedules; mask and denoise a finite toy language; reconstruct and edit a code hierarchy; measure stale layer-2 K/V |
+| 7. Further directions | Orthogonal rotation, cross-layer sharing, sparse cache retrieval, chunked prefill | Isolate rotation plus quantization on an outlier vector; link the other directions to primary sources |
+
+Jump directly to [diffusion language models](https://ravisankarg.github.io/kv-cache-playground/#diffusion) or [Next-Concept Modeling](https://ravisankarg.github.io/kv-cache-playground/#ncm).
+
+The new chapter follows the [October 12, 2026 NCM article](https://hazyresearch.stanford.edu/blog/2026-10-12-ncm) and [primary paper](https://www.alphaxiv.org/abs/2610.next-concept-modeling-parallel-generation.pdf), plus [LLaDA](https://arxiv.org/abs/2502.09992) and [Fast-dLLM](https://arxiv.org/abs/2505.22618). Its browser labs are original teaching calculations, **not trained diffusion or NCM models**:
+
+- The diffusion denoiser computes exact marginals over three weighted sentences. Greedy simultaneous unmasking can combine incompatible color/shape tokens; sequential conditioning resolves that example. It is not an exact joint sampler.
+- The residual VQ lab encodes eight known scalar targets with fixed codebooks, then reveals or edits their codes. It isolates reconstruction and code influence; it does not generate unknown codes or text.
+- The work calculator counts generator calls, positions and attention pairs under stated assumptions. It excludes NCM's final text decoder and does not predict latency or quality.
+- The KV lab computes a scalar attention dependency through two layers, showing why unchanged token IDs need not preserve later-layer K/V under bidirectional attention.
 
 The original architecture walkthrough remains available at [`docs/trace.html`](docs/trace.html).
 
@@ -38,6 +48,7 @@ Value assignments are split before sampling: the weighted value-index sum modulo
 ```bash
 python experiments/build_course.py --steps 8000
 node tests/numerical.mjs
+node tests/parallel.mjs
 ```
 
 The Python generator requires CUDA and exports weights, training metadata, a GPU reference distribution, cache-equivalence audits, and held-out transfer results. The Node audit checks browser/GPU parity, independent matrix-prefill equivalence, causal invariance, rollback, tokenizer behavior, context limits, speculative probability mass, online softmax, and recall presets. `tests/browser.html?width=390` runs the interaction audit at phone width when served from the repository root; the default width is 1280.
@@ -49,9 +60,10 @@ The Python generator requires CUDA and exports weights, training metadata, a GPU
 | `docs/index.html`, `docs/course.css` | Chapter content, equations, controls, responsive layout |
 | `docs/engine.js` | Pure decoder math, independent matrix prefill, cached decode, speculative mass, quantization, online attention |
 | `docs/course.js` | Numerical visualizations and linked lab controls |
+| `docs/parallel-engine.js`, `docs/parallel.js`, `docs/parallel.css` | Pure parallel-generation calculations, interactive controls and chapter styling |
 | `experiments/build_course.py` | CUDA training, audits, per-head cache mapping, JSON export |
 | `kv_cache_demo.py` | Untrained CUDA MHA/GQA/MQA/MLA-like architecture traces |
-| `tests/numerical.mjs`, `tests/browser.html` | Numerical and browser interaction audits |
+| `tests/numerical.mjs`, `tests/parallel.mjs`, `tests/browser.html` | Numerical and browser interaction audits |
 
 ## Recompute the trace on a GPU
 
