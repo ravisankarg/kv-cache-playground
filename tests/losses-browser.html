@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Loss explorer browser audit</title></head><body><pre id="result">RUNNING</pre><iframe id="course" style="height:1000px;border:0" title="Loss explorer under test"></iframe><script type="module">
+import {auditLosses} from './loss-browser-audit.js';
+const frame=document.getElementById('course'),result=document.getElementById('result');
+frame.style.width=(new URLSearchParams(location.search).get('width')||1280)+'px';
+frame.addEventListener('load',async()=>{try{
+ const w=frame.contentWindow;
+ if(!w.document.body.dataset.ready)await new Promise((resolve,reject)=>{w.addEventListener('losses-ready',resolve,{once:true});setTimeout(()=>reject(Error(w.document.body.dataset.error||'ready timeout')),15000);});
+ const r=await auditLosses(w);result.textContent='PASS '+r.count+'\n'+r.assertions.join('\n');document.body.dataset.result='pass';
+}catch(e){result.textContent='FAIL '+e.stack;document.body.dataset.result='fail';}});
+frame.src='../docs/losses.html';
+</script></body></html>

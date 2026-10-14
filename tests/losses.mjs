@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import {losses,defaults} from '../docs/loss-catalog.js';
+import {evaluateLoss,softplus,softmax,ce,kl,cosine,pearson,mse,infoNCE,listwise,distLoss,clipped,groupAdvantages,calibration} from '../docs/loss-engine.js';
+let checks=0;
+const near=(a,b,tolerance=1e-9)=>{assert(Math.abs(a-b)<tolerance,`${a} != ${b}`);checks++;};
+const evalAt=(id,overrides={})=>evaluateLoss(id,{...defaults(losses.find(s=>s.id===id)),...overrides});
+const derivative=(fn,x,h=1e-5)=>(fn(x+h)-fn(x-h))/(2*h);
+assert.equal(losses.length,22);assert.equal(new Set(losses.map(s=>s.id)).size,22);
+for(const spec of losses){
+ for(const key of ['principle','derivation','equation','toy','failureText','modern'])assert(spec[key].trim().length>0,`${spec.id} ${key} coverage`);
+ assert.equal(spec.fit.length,3);assert(spec.sources.every(([name,url])=>name&&url.startsWith('https://')));
+ const base=defaults(spec),cases=[base,{...base,...spec.failure}];
+ for(const c of spec.controls)for(const value of c.options?c.options.map((_,i)=>i):[c.min,c.max])cases.push({...base,[c.key]:value});
+ for(const values of cases){
+  const r=evaluateLoss(spec.id,values);assert(r.value===null||Number.isFinite(r.value),`${spec.id} must be finite or explicitly undefined`);
+  assert(r.steps.length>=3);for(const row of r.rows)for(const value of row)if(typeof value==='number')assert(Number.isFinite(value),`${spec.id} row nonfinite`);
+  checks++;
+ }
+}
+// Independently calculated reference examples, not snapshots of the implementation.
+near(evalAt('mse',{prediction:10,target:0}).value,33.35);
+near(evalAt('mse',{prediction:10,target:0}).rows[1][1],10.3/3);
+near(evalAt('mse',{prediction:10,target:0,delta:1}).rows[2][1],9.525/3);
+near(evalAt('geometry',{angle:0,norm:5}).value,0);near(evalAt('geometry',{angle:0,norm:5}).rows[1][1],8);
+assert.equal(cosine([0,0],[1,0]),null);assert.equal(pearson([1,1],[2,3]),null);
+near(softplus(1000),1000);near(softplus(-1000),0);
+near(ce([1,0],[0,0]),Math.log(2));near(ce([1,0],[1000,999]),Math.log1p(Math.exp(-1)));
+const p=softmax([1,2,3]);near(p.reduce((a,b)=>a+b),1);
+near(kl([.5,.5],[.25,.75]),.5*Math.log(4/3));near(kl([1,0],[1,0]),0);assert.equal(kl([1,0],[0,1]),Infinity);
+near(evalAt('contrastive',{distance:.2,margin:1,label:0}).value,.64);
+near(evalAt('triplet',{positive:.4,negative:1,margin:.5}).value,0);
+near(evalAt('triplet',{positive:1,negative:.4,margin:.5}).value,1.1);
+near(infoNCE([1,1,1],1).loss,Math.log(3));
+const scores=[.7,.8,.1],tau=.2;
+const nce=infoNCE(scores,tau);for(let i=0;i<3;i++)near(derivative(x=>infoNCE(scores.map((s,j)=>i===j?x:s),tau).loss,scores[i]),nce.gradient[i],1e-7);
+const multi=infoNCE(scores,tau,[0,1]);near(multi.loss,(-Math.log(multi.p[0])-Math.log(multi.p[1]))/2);
+near(infoNCE(scores,tau,[0],[0,2]).gradient[1],0);
+assert(nce.gradient[1]>0,'single positive pushes false negative down');
+assert(multi.gradient[1]<nce.gradient[1],'positive target reduces that repulsion');
+near(evalAt('cosent',{high:0,low:0,scale:20}).value,Math.log(2));
+near(evalAt('margin-mse',{positive:3,negative:1,shift:10}).value,0);
+near(evalAt('margin-mse',{positive:3,negative:1,shift:10}).rows[3][1],100);
+near(evalAt('ranknet',{positive:0,negative:0,preference:1}).value,Math.log(2));
+const list=listwise([0,0,0],[2,1,0]);near(list.listmle,Math.log(6));near(list.plistmle,7*Math.log(3)+3*Math.log(2));
+near(listwise([3,2,1],[2,1,0]).ndcg,1);assert(listwise([-2,0,2],[2,1,0]).ndcg<.7);
+const shifted=listwise([8,8,8],[2,1,0]);near(list.listnet,shifted.listnet);near(list.lambda,shifted.lambda);
+near(evalAt('kd',{first:2,second:1}).value,0);
+const teacher=[[.7,.2,.1],[.2,.6,.2],[.1,.3,.6]],student=teacher.map(row=>row.map(x=>.1*x+.9/3));
+near(distLoss(teacher,student).loss,0);assert(kl(teacher[0],student[0])>.1);
+assert.equal(evalAt('dist',{scale:0}).value,null);
+near(evalAt('matryoshka',{weight:1}).value,Math.log(2));
+near(evalAt('boundary',{score:1,boundary:0,margin:.5,label:0}).value,1.5);
+near(evalAt('boundary',{outside:.2}).rows[2][1],-2.2);
+near(derivative(x=>evalAt('reinforce',{logit:x,reward:1,baseline:.5}).value,0),-.25,1e-7);
+near(clipped(1.8,1,.2),1.2);near(clipped(.5,-1,.2),-.8);near(clipped(1.8,-1,.2),-1.8);
+assert.deepEqual(groupAdvantages([1,1,1]),[0,0,0]);near(groupAdvantages([1,.5,0])[0],Math.sqrt(1.5));
+const reduction=evalAt('grpo',{ratio:1.1,reward:.5,normalize:1});near(reduction.rows[0][1],0);assert(reduction.rows[1][1]>.4);
+near(evalAt('dpo',{chosen:-2,rejected:-4}).value,evalAt('dpo',{chosen:-10,rejected:-12}).value);
+near(evalAt('dpo',{chosen:-2,rejected:-4,reference:2}).value,Math.log(2));
+const dpo=losses.find(s=>s.id==='dpo');
+assert(dpo.controls.filter(c=>['chosen','rejected'].includes(c.key)).reduce((mass,c)=>mass+Math.exp(c.max),0)<=1,'DPO response probabilities must fit in one normalized policy');checks++;
+near(evalAt('simpo',{chosen:-6,rejected:-8,chosenLength:3,rejectedLength:4,beta:2,margin:1}).value,Math.log1p(Math.E));
+near(evalAt('rlcd',{preferred:1,rejected:0,label:1}).value,Math.log1p(Math.exp(-1)));
+near(calibration(.7,.7).brier,.21);near(calibration(.99,.7).brier,.2941);assert(calibration(.99,.7).sampleReward>calibration(.7,.7).sampleReward);
+const cal=evalAt('calibrated');near(cal.rows[3][1],cal.rows[4][1]+cal.rows[5][1]);
+near(evalAt('sdpo',{logit:2,feedback:2}).value,0);assert(evalAt('sdpo',{logit:2,feedback:-4}).value>3);
+// Check analytical gradients at differentiable points with an independent central difference.
+near(derivative(x=>evalAt('mse',{prediction:x,target:1}).value,2),2/3,1e-7);
+near(derivative(x=>evalAt('classification',{logit:x,smooth:0}).value,1),softmax([1,0,-1])[0]-1,1e-7);
+near(derivative(x=>evalAt('ranknet',{positive:x,negative:0,preference:1}).value,1),1/(1+Math.exp(-1))-1,1e-7);
+near(derivative(x=>calibration(x,.7).brier,.5),-.4,1e-7);
+console.log(`PASS ${checks}: all 22 families, control boundaries, failure presets, independent numeric references, invariances, KL support, gradient checks and proper-score identity.`);

@@ -1,6 +1,6 @@
 # KV Cache Playground
 
-An interactive course that follows context and a user question through a trained two-layer toy decoder, then examines KV architecture, speculative decoding, multi-token prediction, cache transfer, eviction, serving, diffusion language models, and Next-Concept Modeling (NCM). Each chapter connects first principles and equations to numerical labs.
+An interactive course that follows context and a user question through a trained two-layer toy decoder, then examines KV architecture, speculative decoding, multi-token prediction, cache transfer, eviction, serving, diffusion language models, Next-Concept Modeling (NCM), and loss functions for fine-tuning and distillation. Each chapter connects first principles and equations to numerical labs.
 
 **Live guide:** [ravisankarg.github.io/kv-cache-playground](https://ravisankarg.github.io/kv-cache-playground/)
 
@@ -24,7 +24,8 @@ Then visit `http://localhost:8000/docs/`. The page loads checked-in weights from
 | 4. Reuse and transfer | Compatible same-model handoff, per-head ridge maps, RoPE factoring, causal prefix boundaries | Compare an invertible cache basis change with an independent random decoder; change ridge strength and prefix block size |
 | 5. Memory and serving | Eviction and renormalization, affine quantization, logical/physical paging, online softmax | Compare retention policies and output TV; quantize real toy K/V; inspect block addresses and tile-by-tile attention accumulation |
 | 6. Parallel generation | Masked diffusion, multiscale residual VQ, levelwise NCM factorization, causal versus bidirectional state dependencies | Compare work schedules; mask and denoise a finite toy language; reconstruct and edit a code hierarchy; measure stale layer-2 K/V |
-| 7. Further directions | Orthogonal rotation, cross-layer sharing, sparse cache retrieval, chunked prefill | Isolate rotation plus quantization on an outlier vector; link the other directions to primary sources |
+| 7. Loss functions | Empirical risk, gradients, likelihood, geometry, ranking, teacher matching, policy rewards and preference optimization | 22 loss families in a dedicated explorer; adjust inputs, inspect calculations and curves, load failure cases, compare suitability for bi-encoder/cross-encoder/decoder |
+| 8. Further directions | Orthogonal rotation, cross-layer sharing, sparse cache retrieval, chunked prefill | Isolate rotation plus quantization on an outlier vector; link the other directions to primary sources |
 
 Jump directly to [diffusion language models](https://ravisankarg.github.io/kv-cache-playground/#diffusion) or [Next-Concept Modeling](https://ravisankarg.github.io/kv-cache-playground/#ncm).
 
@@ -34,6 +35,20 @@ The new chapter follows the [October 12, 2026 NCM article](https://hazyresearch.
 - The residual VQ lab encodes eight known scalar targets with fixed codebooks, then reveals or edits their codes. It isolates reconstruction and code influence; it does not generate unknown codes or text.
 - The work calculator counts generator calls, positions and attention pairs under stated assumptions. It excludes NCM's final text decoder and does not predict latency or quality.
 - The KV lab computes a scalar attention dependency through two layers, showing why unchanged token IDs need not preserve later-layer K/V under bidirectional attention.
+
+## Loss-functions explorer
+
+Open [the loss-functions chapter](https://ravisankarg.github.io/kv-cache-playground/losses.html). Every family includes first principles, a derivation, explicit equations, a computed toy example, a failure preset, application suitability and current variants with sources. The math is original deterministic browser arithmetic; no production training or benchmark is implied.
+
+Coverage includes MSE/MAE/Huber; cosine alignment and cosine-score regression; CE/BCE/focal/smoothing; contrastive distance; InfoNCE/MNRL and multiple positives; CoSENT; triplet margin; MarginMSE; RankNet; ListNet/ListMLE/position weighting/Lambda-style weighting; KL/reverse-KL/JS; named DIST; Matryoshka; decision versus spatial boundary loss; REINFORCE; PPO; GRPO with DAPO/Dr. GRPO-style reductions; DPO; SimPO; contrastive-distillation RLCD; proper-score/calibrated-decision RLCD; and SDPO’s feedback-conditioned distillation slice.
+
+Research/implementation sources were reviewed October 14, 2026. The chapter distinguishes complete algorithms from isolated objective components and gives conditional selection guidance rather than claiming a universally best loss. Numeric derivatives are with respect to toy variables, not complete model parameters. The two RLCD meanings are explicitly separate.
+
+```bash
+node tests/losses.mjs
+```
+
+`tests/losses-browser.html?width=390` verifies all families, presets, endpoints and navigation at phone width. The default browser-audit width is 1280.
 
 The original architecture walkthrough remains available at [`docs/trace.html`](docs/trace.html).
 
@@ -60,6 +75,9 @@ The Python generator requires CUDA and exports weights, training metadata, a GPU
 | `docs/index.html`, `docs/course.css` | Chapter content, equations, controls, responsive layout |
 | `docs/engine.js` | Pure decoder math, independent matrix prefill, cached decode, speculative mass, quantization, online attention |
 | `docs/course.js` | Numerical visualizations and linked lab controls |
+| `docs/losses.html`, `docs/losses.js`, `docs/losses.css` | Loss explorer, loss curves, failure presets and application guide |
+| `docs/loss-engine.js`, `docs/loss-catalog.js` | Pure objective math and structured, source-linked lessons |
+| `tests/losses.mjs`, `tests/losses-browser.html` | Objective invariants, gradient checks, all-family browser audit |
 | `docs/parallel-engine.js`, `docs/parallel.js`, `docs/parallel.css` | Pure parallel-generation calculations, interactive controls and chapter styling |
 | `experiments/build_course.py` | CUDA training, audits, per-head cache mapping, JSON export |
 | `kv_cache_demo.py` | Untrained CUDA MHA/GQA/MQA/MLA-like architecture traces |
