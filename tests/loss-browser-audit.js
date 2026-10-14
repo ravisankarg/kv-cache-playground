@@ -32,7 +32,9 @@ export async function auditLosses(w){
  await choose('margin-mse');change('parameter-positive','3');change('parameter-negative','1');change('parameter-shift','10');assert(text('loss-value').includes('0.0000')&&text('loss-table').includes('100.0000'),'margin loss ignores common offset but absolute MSE sees it');
  await choose('infonce');const before=text('loss-value');change('parameter-policy','1');assert(text('loss-value')!==before,'negative filtering changes objective');
  await choose('listwise');change('parameter-objective','1');const listMLE=text('loss-value');change('parameter-objective','2');assert(text('loss-value')!==listMLE,'position weighting changes list loss');
- await choose('calibrated');assert(text('loss-value').includes('0.2100'),'proper-score calibrated reference');d.getElementById('loss-failure').click();assert(text('loss-value').includes('0.2941'),'overconfidence increases proper loss');
+ await choose('rlcd');assert(text('loss-value').includes('0.2100'),'proper-score calibrated reference');d.getElementById('loss-failure').click();assert(text('loss-value').includes('0.2941'),'overconfidence increases proper loss');
+ assert(text('loss-title').includes('Reinforcement Learning for Calibrated Decisions'),'RLCD uses the requested calibrated-decisions meaning');
+ w.location.hash='calibrated';await new Promise(r=>w.setTimeout(r,20));assert(d.body.dataset.loss==='rlcd','original calibration link remains valid');
  await choose('mse');assert(d.getElementById('loss-previous').disabled,'first-family previous disabled');d.getElementById('loss-next').click();await new Promise(r=>w.setTimeout(r,20));assert(d.body.dataset.loss==='geometry','next-family navigation');
  const select=d.getElementById('loss-select');select.value='sdpo';select.dispatchEvent(new w.Event('change',{bubbles:true}));await new Promise(r=>w.setTimeout(r,20));assert(d.body.dataset.loss==='sdpo'&&d.getElementById('loss-next').disabled,'selector and last-family navigation');
  assert(d.querySelectorAll('#selection-guide tbody tr').length===9,'fine-tuning and distillation selection guide');

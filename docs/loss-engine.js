@@ -137,12 +137,12 @@ export function evaluateLoss(id,v){
     return out(softplus(-logit),[['Chosen average log probability',v.chosen/v.chosenLength],['Rejected average log probability',v.rejected/v.rejectedLength],['β·average gap − γ',logit]],
       [`Sum log probabilities [${v.chosen}, ${v.rejected}], lengths [${v.chosenLength}, ${v.rejectedLength}].`,`L = softplus(γ − β(logπ_c/|c| − logπ_r/|r|)).`,`Length normalization can reverse the preference implied by total log probability; it does not guarantee factual quality.`]);
   }
-  case 'rlcd': {
+  case 'contrastive-rlcd': {
     const gap=v.preferred-v.rejected,p=sigmoid(gap),loss=softplus(-gap)+(1-v.label)*gap;
     return out(loss,[['Reward-model preference probability',p],['Synthetic preference target',v.label],['Reward-model BCE',loss],['∂L / ∂preferred score',p-v.label]],
       [`A positive prompt generates response A; a contrasting prompt generates B. Synthetic label assumes A is preferable (adjust it here).`,`Fit a preference/reward model using Δr = ${gap} and BCE. Then use the learned reward in an RL update.`,`This lab computes the preference-fitting stage; contrastive prompting is data construction, not a new primitive loss.`]);
   }
-  case 'calibrated': {
+  case 'rlcd': {
     const c=calibration(v.probability,v.frequency),p1=v.probability,p2=v.other,avg=(p1+p2)/2;
     const per=(calibration(p1,v.frequency).brier+calibration(p2,v.frequency).brier)/2,mix=calibration(avg,v.frequency).brier,variance=((p1-avg)**2+(p2-avg)**2)/2;
     return out(c.brier,[['Expected binary Brier',c.brier],['Expected log loss',c.logloss],['Expected sampled correctness reward',c.sampleReward],['Mean per-rationale Brier',per],['Brier of mean prediction',mix],['Variance across rationales',variance]],

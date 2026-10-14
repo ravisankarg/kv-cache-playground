@@ -60,9 +60,9 @@ near(evalAt('dpo',{chosen:-2,rejected:-4,reference:2}).value,Math.log(2));
 const dpo=losses.find(s=>s.id==='dpo');
 assert(dpo.controls.filter(c=>['chosen','rejected'].includes(c.key)).reduce((mass,c)=>mass+Math.exp(c.max),0)<=1,'DPO response probabilities must fit in one normalized policy');checks++;
 near(evalAt('simpo',{chosen:-6,rejected:-8,chosenLength:3,rejectedLength:4,beta:2,margin:1}).value,Math.log1p(Math.E));
-near(evalAt('rlcd',{preferred:1,rejected:0,label:1}).value,Math.log1p(Math.exp(-1)));
+near(evalAt('contrastive-rlcd',{preferred:1,rejected:0,label:1}).value,Math.log1p(Math.exp(-1)));
 near(calibration(.7,.7).brier,.21);near(calibration(.99,.7).brier,.2941);assert(calibration(.99,.7).sampleReward>calibration(.7,.7).sampleReward);
-const cal=evalAt('calibrated');near(cal.rows[3][1],cal.rows[4][1]+cal.rows[5][1]);
+const cal=evalAt('rlcd');near(cal.rows[3][1],cal.rows[4][1]+cal.rows[5][1]);
 near(evalAt('sdpo',{logit:2,feedback:2}).value,0);assert(evalAt('sdpo',{logit:2,feedback:-4}).value>3);
 // Check analytical gradients at differentiable points with an independent central difference.
 near(derivative(x=>evalAt('mse',{prediction:x,target:1}).value,2),2/3,1e-7);

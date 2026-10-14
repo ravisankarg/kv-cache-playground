@@ -1,5 +1,6 @@
-import {losses,defaults} from './loss-catalog.js';
-import {evaluateLoss} from './loss-engine.js';
+import {losses,defaults} from './loss-catalog.js?v=2';
+import {evaluateLoss} from './loss-engine.js?v=2';
+const canonical=id=>id==='calibrated'?'rlcd':id;
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const f=x=>x===null?'undefined':typeof x==='number'?(Math.abs(x)<1e-10?'0.0000':x.toFixed(4)):esc(x);
 let selected=losses[0],values=defaults(selected);
@@ -29,7 +30,7 @@ function renderPlot(current){
  document.body.dataset.loss=selected.id;
 }
 function selectLoss(id,{scroll=false}={}){
- selected=losses.find(s=>s.id===id)||losses[0];values=defaults(selected);
+ selected=losses.find(s=>s.id===canonical(id))||losses[0];values=defaults(selected);
  $('loss-select').value=selected.id;$('loss-title').textContent=selected.title;$('loss-tag').textContent=selected.tag;
  for(const field of ['principle','derivation','equation','toy','modern'])$('loss-'+field).textContent=selected[field];
  $('loss-failure-text').textContent=selected.failureText;
@@ -43,7 +44,7 @@ function selectLoss(id,{scroll=false}={}){
  $('loss-previous').disabled=losses.indexOf(selected)===0;$('loss-next').disabled=losses.indexOf(selected)===losses.length-1;
  renderNumbers();if(scroll)$('workbench').scrollIntoView({behavior:'instant',block:'start'});
 }
-function route(){const id=location.hash.slice(1);if(losses.some(s=>s.id===id))selectLoss(id,{scroll:true});}
+function route(){const id=canonical(location.hash.slice(1));if(losses.some(s=>s.id===id))selectLoss(id,{scroll:true});}
 try{
  const groups=[...new Set(losses.map(s=>s.group))];
  $('loss-navigation').innerHTML=groups.map(group=>`<div class="loss-nav-group"><span>${esc(group)}</span>${losses.filter(s=>s.group===group).map(s=>`<a href="#${s.id}">${esc(s.title)}</a>`).join('')}</div>`).join('');
@@ -53,6 +54,6 @@ try{
  $('loss-failure').addEventListener('click',()=>{values={...defaults(selected),...selected.failure};$('loss-preset-status').textContent='Failure case loaded — read “When it does not work” below.';renderNumbers();});
  for(const [id,delta] of [['loss-previous',-1],['loss-next',1]])$(id).addEventListener('click',()=>{const next=losses[losses.indexOf(selected)+delta];if(next)location.hash=next.id;});
  window.addEventListener('hashchange',route);selectLoss(location.hash.slice(1));
- if(location.hash)requestAnimationFrame(()=>{if(losses.some(s=>s.id===location.hash.slice(1)))$('workbench').scrollIntoView({behavior:'instant',block:'start'});else document.getElementById(location.hash.slice(1))?.scrollIntoView({behavior:'instant'});});
+ if(location.hash)requestAnimationFrame(()=>{if(losses.some(s=>s.id===canonical(location.hash.slice(1))))$('workbench').scrollIntoView({behavior:'instant',block:'start'});else document.getElementById(location.hash.slice(1))?.scrollIntoView({behavior:'instant'});});
  document.body.dataset.ready='true';window.dispatchEvent(new Event('losses-ready'));
 }catch(error){$('loss-error').hidden=false;$('loss-error').textContent=`The loss explorer could not load: ${error.message}`;document.body.dataset.error=error.message;console.error(error);}

@@ -42,7 +42,7 @@ Open [the loss-functions chapter](https://ravisankarg.github.io/kv-cache-playgro
 
 Coverage includes MSE/MAE/Huber; cosine alignment and cosine-score regression; CE/BCE/focal/smoothing; contrastive distance; InfoNCE/MNRL and multiple positives; CoSENT; triplet margin; MarginMSE; RankNet; ListNet/ListMLE/position weighting/Lambda-style weighting; KL/reverse-KL/JS; named DIST; Matryoshka; decision versus spatial boundary loss; REINFORCE; PPO; GRPO with DAPO/Dr. GRPO-style reductions; DPO; SimPO; contrastive-distillation RLCD; proper-score/calibrated-decision RLCD; and SDPO’s feedback-conditioned distillation slice.
 
-Research/implementation sources were reviewed October 14, 2026. The chapter distinguishes complete algorithms from isolated objective components and gives conditional selection guidance rather than claiming a universally best loss. Numeric derivatives are with respect to toy variables, not complete model parameters. The two RLCD meanings are explicitly separate.
+Research/implementation sources were reviewed October 14, 2026. The chapter distinguishes complete algorithms from isolated objective components and gives conditional selection guidance rather than claiming a universally best loss. Numeric derivatives are with respect to toy variables, not complete model parameters. RLCD primarily means Reinforcement Learning for Calibrated Decisions here. The lesson distinguishes TypeSafe’s stated goal from the independent OpenJev implementation, and labels the earlier contrastive-distillation method separately.
 
 ```bash
 node tests/losses.mjs
